@@ -118,6 +118,12 @@ bool Queue::has_free_slots() const
     return free_buffers > 0;
 }
 
+bool Queue::has_free_slots(u16 count) const
+{
+    auto const free_buffers = AK::atomic_load(&m_free_buffers, AK::MemoryOrder::memory_order_relaxed);
+    return free_buffers >= count;
+}
+
 Optional<u16> Queue::take_free_slot()
 {
     VERIFY(m_lock.is_locked());

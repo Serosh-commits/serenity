@@ -42,6 +42,7 @@ public:
 
     bool new_data_available() const;
     bool has_free_slots() const;
+    bool has_free_slots(u16 count) const;
     Optional<u16> take_free_slot();
     QueueChain pop_used_buffer_chain(size_t& used);
     void discard_used_buffers();

@@ -268,7 +268,12 @@ void VirtIONetworkAdapter::send_raw(ReadonlyBytes payload)
         return;
     }
 
-    // FIXME: Handle errors from pushing to the chain and rewind the RingBuffer.
+    // ensure enough descriptor slots are available before sending
+    if (!queue.has_free_slots(4)) {
+        dmesgln("VirtIONetworkAdapter: not enough free slots in the queue. Dropping packet");
+        return;
+    }
+
     VirtIONetHdr hdr {};
     VERIFY(copy_data_to_chain(chain, *m_tx_buffers, reinterpret_cast<u8*>(&hdr), sizeof(hdr)));
     VERIFY(copy_data_to_chain(chain, *m_tx_buffers, payload.data(), payload.size()));

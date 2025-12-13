@@ -209,7 +209,10 @@ void VirtIONetworkAdapter::handle_queue_update(u16 queue_index)
             popped_chain.for_each([&](PhysicalAddress addr, size_t length) {
                 size_t offset = addr.as_ptr() - m_rx_buffers->start_of_region().as_ptr();
                 auto* message = reinterpret_cast<VirtIONetHdr*>(m_rx_buffers->vaddr().offset(offset).as_ptr());
-                did_receive({ message->frame, length - sizeof(VirtIONetHdr) });
+                if (length >= sizeof(VirtIONetHdr))
+                    did_receive({ message->frame, length - sizeof(VirtIONetHdr) });
+                else
+                    dmesgln("VirtIONetworkAdapter: received packet too small: {}", length);
             });
 
             supply_chain_and_notify(RECEIVEQ, popped_chain);

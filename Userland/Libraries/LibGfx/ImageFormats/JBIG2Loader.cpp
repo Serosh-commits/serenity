@@ -2463,14 +2463,18 @@ static ErrorOr<void> decode_symbol_dictionary(JBIG2LoadingContext& context, Segm
     bool uses_huffman_encoding = (flags & 1) != 0;               // "SDHUFF" in spec.
     bool uses_refinement_or_aggregate_coding = (flags & 2) != 0; // "SDREFAGG" in spec.
 
+    // "If SDHUFF is 0, then bits 2 through 7 of the symbol dictionary flags field must be 0."
+    if (!uses_huffman_encoding && (flags & 0b0000'0000'1111'1100) != 0)
+        return Error::from_string_literal("JBIG2ImageDecoderPlugin: Invalid symbol dictionary flags");
+
     auto huffman_tables = TRY(symbol_dictionary_huffman_tables_from_flags(flags, custom_tables));
 
     bool bitmap_coding_context_used = (flags >> 8) & 1;
-    if (uses_huffman_encoding && !uses_refinement_or_aggregate_coding && bitmap_coding_context_used)
+    if (uses_huffman_encoding && bitmap_coding_context_used)
         return Error::from_string_literal("JBIG2ImageDecoderPlugin: Invalid bitmap_coding_context_used");
 
     bool bitmap_coding_context_retained = (flags >> 9) & 1;
-    if (uses_huffman_encoding && !uses_refinement_or_aggregate_coding && bitmap_coding_context_retained)
+    if (uses_huffman_encoding && bitmap_coding_context_retained)
         return Error::from_string_literal("JBIG2ImageDecoderPlugin: Invalid bitmap_coding_context_retained");
 
     u8 template_used = (flags >> 10) & 0b11; // "SDTEMPLATE" in spec.
@@ -2479,8 +2483,12 @@ static ErrorOr<void> decode_symbol_dictionary(JBIG2LoadingContext& context, Segm
 
     u8 refinement_template_used = (flags >> 12) & 1; // "SDREFTEMPLATE" in spec.
 
+<<<<<<< Updated upstream
     // Quirk: 042_22.jb2 does not set SDREFAGG but it does set SDREFTEMPLATE.
-    if (!uses_refinement_or_aggregate_coding && refinement_template_used != 0 && !context.allow_power_jbig2_quirks)
+=======
+    // Quirk: 042_22.jb2 does not set SDREFAGG but it does set SDREFTEMPLATE. It also has SDHUFF set to 0.
+>>>>>>> Stashed changes
+    if ((uses_huffman_encoding || !uses_refinement_or_aggregate_coding) && refinement_template_used != 0 && !context.allow_power_jbig2_quirks)
         return Error::from_string_literal("JBIG2ImageDecoderPlugin: Invalid refinement_template_used");
 
     if (flags & 0b1110'0000'0000'0000)
@@ -2670,9 +2678,15 @@ static ErrorOr<RegionResult> decode_text_region(JBIG2LoadingContext& context, Se
     u8 default_pixel_value = (text_region_segment_flags >> 9) & 1; // "SBDEFPIXEL" in spec.
 
     u8 delta_s_offset_value = (text_region_segment_flags >> 10) & 0x1f; // "SBDSOFFSET" in spec.
+    // "If SBHUFF is 1, then bits 10 through 14 of the text region segment flags field must be 0."
+    if (uses_huffman_encoding && delta_s_offset_value != 0)
+        return Error::from_string_literal("JBIG2ImageDecoderPlugin: Invalid delta_s_offset_value");
     i8 delta_s_offset = AK::sign_extend(delta_s_offset_value, 5);
 
     u8 refinement_template = (text_region_segment_flags >> 15) != 0; // "SBRTEMPLATE" in spec.
+    // "If SBHUFF is 1, bit 15 (SBRTEMPLATE) must be 0."
+    if (uses_huffman_encoding && refinement_template != 0)
+        return Error::from_string_literal("JBIG2ImageDecoderPlugin: Invalid refinement_template");
     if (!uses_refinement_coding && refinement_template != 0)
         return Error::from_string_literal("JBIG2ImageDecoderPlugin: Invalid refinement_template");
 

@@ -1739,6 +1739,25 @@ static ErrorOr<void> encode_symbol_dictionary(JBIG2::SymbolDictionarySegmentData
     u8 symbol_template = (symbol_dictionary.flags >> 10) & 3;
     u8 symbol_refinement_template = (symbol_dictionary.flags >> 12) & 1;
 
+<<<<<<< Updated upstream
+    if (uses_huffman_encoding && bitmap_coding_context_used)
+        return Error::from_string_literal("JBIG2Writer: \"bitmap coding context used\" bit must be 0 if uses_huffman_encoding is true");
+    if (uses_huffman_encoding && bitmap_coding_context_retained)
+        return Error::from_string_literal("JBIG2Writer: \"bitmap coding context retained\" bit must be 0 if uses_huffman_encoding is true");
+    if (uses_huffman_encoding && symbol_refinement_template != 0)
+        return Error::from_string_literal("JBIG2Writer: \"refinement template\" bit must be 0 if uses_huffman_encoding is true");
+=======
+    if (!uses_huffman_encoding && (symbol_dictionary.flags & 0b1111'1100) != 0)
+        return Error::from_string_literal("JBIG2Writer: Invalid symbol dictionary flags");
+
+    if (uses_huffman_encoding) {
+        if (bitmap_coding_context_used || bitmap_coding_context_retained || symbol_template != 0 || symbol_refinement_template != 0)
+            return Error::from_string_literal("JBIG2Writer: Invalid symbol dictionary flags");
+    }
+    if (!uses_refinement_or_aggregate_coding && symbol_refinement_template != 0)
+        return Error::from_string_literal("JBIG2Writer: Invalid symbol dictionary flags");
+>>>>>>> Stashed changes
+
     u8 number_of_adaptive_template_pixels = 0;
     if (!uses_huffman_encoding)
         number_of_adaptive_template_pixels = symbol_template == 0 ? 4 : 1;
@@ -1980,6 +1999,13 @@ static ErrorOr<void> encode_text_region(JBIG2::TextRegionSegmentData const& text
     u8 delta_s_offset_value = (text_region.flags >> 10) & 0x1F;
     i8 delta_s_offset = AK::sign_extend(delta_s_offset_value, 5);
     u8 refinement_template = (text_region.flags >> 15) != 0;
+
+    if (uses_huffman_encoding) {
+        if (delta_s_offset_value != 0 || refinement_template != 0)
+            return Error::from_string_literal("JBIG2Writer: Invalid text region flags");
+    }
+    if (!uses_refinement_coding && refinement_template != 0)
+        return Error::from_string_literal("JBIG2Writer: Invalid text region flags");
 
     u32 id_symbol_code_length = AK::ceil_log2(symbols.size());
 

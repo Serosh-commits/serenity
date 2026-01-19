@@ -396,6 +396,8 @@ TEST_CASE(test_jbig2_decode)
         TEST_INPUT("jbig2/bitmap-symbol-big-segmentid.jbig2"sv),
         TEST_INPUT("jbig2/bitmap-symbol-context-reuse.jbig2"sv),
         TEST_INPUT("jbig2/bitmap-symbol-empty.jbig2"sv),
+        TEST_INPUT("jbig2/bitmap-symbol-context-reuse-refagg.jbig2"sv),
+        TEST_INPUT("jbig2/bitmap-symbol-context-reuse-refagg-huffman.jbig2"sv),
         TEST_INPUT("jbig2/bitmap-symbol-manyrefs.jbig2"sv),
         TEST_INPUT("jbig2/bitmap-symbol-negative-sbdsoffset.jbig2"sv),
         TEST_INPUT("jbig2/bitmap-symbol-refine.jbig2"sv),

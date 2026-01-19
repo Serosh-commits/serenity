@@ -1739,6 +1739,19 @@ static ErrorOr<void> encode_symbol_dictionary(JBIG2::SymbolDictionarySegmentData
     u8 symbol_template = (symbol_dictionary.flags >> 10) & 3;
     u8 symbol_refinement_template = (symbol_dictionary.flags >> 12) & 1;
 
+    // 7.4.2.1.1 Symbol dictionary flags
+    // "Bits 2 through 7 (reserved and must be 0)"
+    // "Bits 13 through 15 (reserved and must be 0)"
+    if ((symbol_dictionary.flags & 0b1110'0000'1111'1100) != 0)
+        return Error::from_string_literal("JBIG2Writer: Invalid symbol dictionary flags (reserved bits must be 0)");
+
+    // "If SDHUFF is 1, then bits 8, 9, 10, 11 and 12 of the symbol dictionary flags field must be 0."
+    if (uses_huffman_encoding && (symbol_dictionary.flags & 0b0001'1111'0000'0000) != 0)
+        return Error::from_string_literal("JBIG2Writer: Invalid symbol dictionary flags (bits 8-12 must be 0 if SDHUFF is 1)");
+
+    if (!uses_refinement_or_aggregate_coding && symbol_refinement_template != 0)
+        return Error::from_string_literal("JBIG2Writer: Invalid symbol dictionary flags (refinement template used but SDREFAGG is 0)");
+
     u8 number_of_adaptive_template_pixels = 0;
     if (!uses_huffman_encoding)
         number_of_adaptive_template_pixels = symbol_template == 0 ? 4 : 1;
@@ -1978,8 +1991,18 @@ static ErrorOr<void> encode_text_region(JBIG2::TextRegionSegmentData const& text
     if (combination_operator > 4)
         return Error::from_string_literal("JBIG2Writer: Invalid text region combination operator");
     u8 delta_s_offset_value = (text_region.flags >> 10) & 0x1F;
+
+    // 7.4.3.1.1 Text region segment flags
+    // "If SBHUFF is 1, then bits 10 through 15 of the text region segment flags field must be 0."
+    if (uses_huffman_encoding && (text_region.flags & 0b1111'1100'0000'0000) != 0)
+        return Error::from_string_literal("JBIG2Writer: Invalid text region flags (bits 10-15 must be 0 if SBHUFF is 1)");
+
     i8 delta_s_offset = AK::sign_extend(delta_s_offset_value, 5);
     u8 refinement_template = (text_region.flags >> 15) != 0;
+
+    // "If SBREFINE is 0, bit 15 (SBRTEMPLATE) must be 0."
+    if (!uses_refinement_coding && refinement_template != 0)
+        return Error::from_string_literal("JBIG2Writer: Invalid refinement_template (must be 0 if SBREFINE is 0)");
 
     u32 id_symbol_code_length = AK::ceil_log2(symbols.size());
 

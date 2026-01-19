@@ -144,12 +144,17 @@ ErrorOr<void> UDPSocket::protocol_bind()
         });
     } else {
         // Verify that the user-supplied port is not already used by someone else.
-        return sockets_by_port().with_exclusive([&](auto& table) -> ErrorOr<void> {
-            if (table.contains(local_port()))
-                return set_so_error(EADDRINUSE);
+        auto result = sockets_by_port().with_exclusive([&](auto& table) -> ErrorOr<void> {
+            if (auto it = table.find(local_port()); it != table.end()) {
+                auto* existing_socket = it->value;
+                if (!is_reuse_address() || !existing_socket->is_reuse_address())
+                    return set_so_error(EADDRINUSE);
+                table.remove(it);
+            }
             table.set(local_port(), this);
             return {};
         });
+        return result;
     }
 }
 

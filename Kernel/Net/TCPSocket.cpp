@@ -525,17 +525,23 @@ ErrorOr<void> TCPSocket::protocol_bind()
         });
     } else {
         // Verify that the user-supplied port is not already used by someone else.
-        bool ok = sockets_by_tuple().with_exclusive([&](auto& table) -> bool {
-            if (table.contains(tuple()))
-                return false;
+        auto result = sockets_by_tuple().with_exclusive([&](auto& table) -> ErrorOr<void> {
+            if (auto it = table.find(tuple()); it != table.end()) {
+                auto* existing_socket = it->value;
+                bool both_allow_reuse = is_reuse_address() && existing_socket->is_reuse_address();
+                bool existing_is_timewait = existing_socket->state() == State::TimeWait;
+
+                if (!both_allow_reuse && !existing_is_timewait)
+                    return set_so_error(EADDRINUSE);
+
+                table.remove(it);
+            }
             auto socket_tuple = tuple();
             m_registered_socket_tuple = socket_tuple;
             table.set(socket_tuple, this);
-            return true;
+            return {};
         });
-        if (!ok)
-            return set_so_error(EADDRINUSE);
-        return {};
+        return result;
     }
 }
 

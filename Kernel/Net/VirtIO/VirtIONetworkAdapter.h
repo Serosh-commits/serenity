@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <AK/Atomic.h>
 #include <Kernel/Bus/VirtIO/Device.h>
 #include <Kernel/Memory/RingBuffer.h>
 #include <Kernel/Net/NetworkAdapter.h>
@@ -46,11 +47,9 @@ private:
 private:
     VirtIO::Configuration const* m_device_config { nullptr };
 
-    // FIXME: Make atomic as they are read without sync.
-    // Note that VirtIO::NetworkAdapter may also have the same defect.
-    bool m_link_up { false };
-    i32 m_link_speed { LINKSPEED_INVALID };
-    bool m_link_duplex { false };
+    Atomic<bool> m_link_up { false };
+    Atomic<i32> m_link_speed { LINKSPEED_INVALID };
+    Atomic<bool> m_link_duplex { false };
 
     OwnPtr<Memory::RingBuffer> m_rx_buffers;
     OwnPtr<Memory::RingBuffer> m_tx_buffers;

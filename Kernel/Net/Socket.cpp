@@ -127,9 +127,12 @@ ErrorOr<void> Socket::setsockopt(int level, int option, Userspace<void const*> u
         m_routing_disabled = TRY(copy_typed_from_user(static_ptr_cast<int const*>(user_value))) != 0;
         return {};
     }
-    case SO_REUSEADDR:
-        dbgln("FIXME: SO_REUSEADDR requested, but not implemented.");
+    case SO_REUSEADDR: {
+        if (user_value_size != sizeof(int))
+            return EINVAL;
+        m_reuse_address = TRY(copy_typed_from_user(static_ptr_cast<int const*>(user_value))) != 0;
         return {};
+    }
     case SO_BROADCAST: {
         if (user_value_size != sizeof(int))
             return EINVAL;
@@ -242,7 +245,7 @@ ErrorOr<void> Socket::getsockopt(OpenFileDescription&, int level, int option, Us
         return copy_to_user(value_size, &size);
     }
     case SO_REUSEADDR: {
-        int reuse_address = 0;
+        int reuse_address = m_reuse_address ? 1 : 0;
         if (size < sizeof(reuse_address))
             return EINVAL;
         TRY(copy_to_user(static_ptr_cast<int*>(value), &reuse_address));
